@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         B站动态广告过滤（UP主推荐/带货商品/淘宝闪购）
 // @namespace    http://tampermonkey.net/
-// @version      1.3
+// @version      1.3.1
 // @description  过滤B站动态带货广告。默认直接过滤；Alt+Shift+A 或 ?adfMark=1 可临时切到只标记模式
 // @author       You
 // @match        *://t.bilibili.com/*
@@ -357,11 +357,18 @@
 
   function updateBadge() {
     if (!document.body) return;
-    if (!isMark() && !CONFIG.showBadge) return;
+    const existing = document.getElementById('bili-adf-badge');
+
+    // 不需要显示时，必须把已存在的角标节点删掉，否则会残留旧样式
+    if (!isMark() && !CONFIG.showBadge) {
+      if (existing) existing.remove();
+      lastShown = -1;
+      return;
+    }
 
     const domN = countDom();
     const total = isMark() ? domN : domN + netCount;
-    const exists = document.getElementById('bili-adf-badge');
+    const exists = existing;
     if (exists && total === lastShown) return;
     lastShown = total;
 
@@ -371,9 +378,11 @@
       el.id = 'bili-adf-badge';
       Object.assign(el.style, {
         position: 'fixed', right: '14px', bottom: '14px', zIndex: '2147483647',
-        padding: '6px 12px', borderRadius: '999px', pointerEvents: 'none',
+        padding: '6px 12px', borderRadius: '999px', cursor: 'pointer',
         color: '#fff', font: '12px/1.5 system-ui,sans-serif', whiteSpace: 'nowrap'
       });
+      el.title = '点击关闭标记模式';
+      el.onclick = () => setMode(isMark() ? 'filter' : 'mark');
       document.body.appendChild(el);
     }
     if (isMark()) {
